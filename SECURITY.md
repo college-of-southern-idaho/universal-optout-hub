@@ -2,30 +2,29 @@
 
 ## Reporting a vulnerability
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+**Please do not report security vulnerabilities through public GitHub issues,
+discussions, or pull requests.**
 
-Report them privately via **GitHub Security Advisories** — on this repository, go to
-the **Security** tab → **Report a vulnerability** (GitHub's private vulnerability
-reporting). If that is unavailable, email the maintainers at the address listed in the
-repository's `NOTICE`/README (maintainers: replace this with a monitored security
-contact before publishing).
+Report them privately through **GitHub's private vulnerability reporting**:
 
-Please include:
+> Go to the repository's **Security** tab → **Report a vulnerability**.
+
+This opens a private advisory visible only to you and the maintainers. Please include:
 
 - a description of the issue and its impact,
 - steps to reproduce (a proof-of-concept if you have one),
-- affected version/commit, and
+- the affected version/commit, and
 - any suggested remediation.
 
 You can expect an acknowledgement within a few business days and a status update as we
-investigate. We ask that you give us a reasonable opportunity to remediate before any
-public disclosure, and we're happy to credit you in the advisory if you'd like.
+investigate. Please give us a reasonable opportunity to remediate before any public
+disclosure; we're happy to credit you in the published advisory if you'd like.
 
 ## Scope
 
-This project is a **self-hosted** application; each deployment operates its own
-instance, database, and credentials. Security-relevant areas include: authentication
-and session handling, the role-based access model, the encrypted credential store, the
+This project is a **self-hosted** application; each deployment runs its own instance,
+database, and credentials. Security-relevant areas include: authentication and session
+handling, the role-based access model, the encrypted credential store, the
 machine-authenticated consent-check API, and the signature-verified inbound webhooks.
 
 The design intentionally **fails closed** (when consent state can't be determined, it
@@ -35,9 +34,9 @@ withholds) and keeps platform credentials encrypted at rest. See
 
 ## Supported versions
 
-This project is pre-1.0 and under active development; security fixes are applied to the
-`main` branch. Operators should track `main` (or tagged releases once published) and
-apply updates promptly.
+This project is pre-1.0 and under active development; security fixes land on the `main`
+branch. Operators should track `main` (or tagged releases once published) and apply
+updates promptly.
 
 ## Operator responsibilities
 
