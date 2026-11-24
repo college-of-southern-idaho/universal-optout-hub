@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# All npm commands run from the app directory (package.json lives there).
+defaults:
+  run:
+    working-directory: optout-hub
+
+jobs:
+  build-test:
+    name: Typecheck, test, migrate
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hub
+          POSTGRES_PASSWORD: hub_dev_password
+          POSTGRES_DB: optout_hub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: optout-hub/package-lock.json
+      - name: Install (from lockfile)
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Test
+        run: npm test
+      - name: Migrate (validate SQL applies)
+        run: npm run migrate
+        env:
+          DATABASE_URL: postgres://hub:hub_dev_password@localhost:5432/optout_hub
+
+  audit:
+    name: Dependency audit (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: optout-hub/package-lock.json
+      - run: npm ci
+      # Advisory: surfaces high/critical advisories without blocking the merge.
+      - name: npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true

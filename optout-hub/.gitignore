@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Load-test artifacts: keys.json holds live API-key plaintext; results are local.
+loadtest/keys.json
+loadtest/*results*.json

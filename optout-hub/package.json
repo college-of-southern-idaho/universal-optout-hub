@@ -1,0 +1,38 @@
+{
+  "name": "optout-hub",
+  "version": "0.1.0",
+  "description": "Universal opt-out synchronization hub: reconciles consent (opt-out/opt-in) state across SMS and email platforms.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/college-of-southern-idaho/IT-UniversalOptOut#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/college-of-southern-idaho/IT-UniversalOptOut.git" },
+  "bugs": { "url": "https://github.com/college-of-southern-idaho/IT-UniversalOptOut/issues" },
+  "author": "College of Southern Idaho",
+  "keywords": ["consent", "opt-out", "opt-in", "tcpa", "can-spam", "sms", "email", "compliance", "reconciliation"],
+  "type": "module",
+  "scripts": {
+    "migrate": "tsx src/db.ts migrate",
+    "seed": "tsx demo/seed.ts",
+    "demo": "tsx demo/demo.ts",
+    "start": "tsx src/api/server.ts",
+    "dev": "tsx watch src/api/server.ts",
+    "reencrypt": "tsx src/tools/reencrypt.ts",
+    "test": "tsx --test test/*.test.ts",
+    "test:integration": "node --import tsx --test --test-concurrency=1 test/integration/*.test.ts",
+    "loadtest:seed": "tsx loadtest/seed.ts",
+    "loadtest:clean": "tsx loadtest/seed.ts --clean",
+    "loadtest": "tsx loadtest/run.ts"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "libphonenumber-js": "^1.13.11",
+    "openid-client": "^5.7.1",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

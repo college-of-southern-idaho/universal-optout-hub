@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opt-Out Hub — Consent Console</title>
+<link rel="icon" id="favicon" href="data:,">
+<style>
+  :root {
+    /* College of Southern Idaho brand palette (Visual Identity Guide 2020):
+       black #000, default gold #FDC82F, cool gray 8 #888B8D. Gold is
+       an accent used as fills/active states with dark text — never body text
+       (it fails contrast on white), matching how the guide uses it. */
+    --paper: #eef1f4;
+    --card: #ffffff;
+    --ink: #14181d;
+    --ink-soft: #5c6772;
+    --line: #dbe0e6;
+    --in: #1e6e50;
+    --in-bg: #e3f1ea;
+    --out: #a8402f;
+    --out-bg: #f7e6e1;
+    --supp: #566173;
+    --supp-bg: #e6eaf0;
+    --unknown: #98a3ae;
+    /* gold accent tokens */
+    --gold: #FDC82F;
+    --gold-dark: #e3ad10;
+    --gold-soft: #fdf3d5;
+    --gold-ink: #1a1a1a;
+    --gray8: #888B8D;
+    --action: #FDC82F;          /* accent (fills / active) */
+    --action-ink: #1a1a1a;      /* text on --action; recomputed to contrast when the accent is dark */
+    --header-bg: #14181d;        /* near-black */
+    --warn-bg: #fdf3df;
+    --warn: #8a6116;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(16,22,30,.06), 0 1px 3px rgba(16,22,30,.05);
+    --shadow-lg: 0 10px 30px rgba(16,22,30,.14);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  code, .mono { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; font-size: 0.92em; }
+  header {
+    background: var(--header-bg, var(--ink)); color: #f2f5f8; padding: 14px 24px;
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; letter-spacing: 0.2px; }
+  header .sub { color: #9fb0c0; font-size: 13px; }
+  nav { background: var(--card); border-bottom: 1px solid var(--line); padding: 0 16px; display: flex; flex-wrap: wrap; gap: 4px; }
+  nav button {
+    appearance: none; background: none; border: none; border-bottom: 3px solid transparent;
+    padding: 12px 14px; font: inherit; font-weight: 600; color: var(--ink-soft); cursor: pointer;
+  }
+  nav button[aria-current="page"] { color: var(--ink); border-bottom-color: var(--action); }
+  nav .dropdown { position: relative; display: flex; align-items: stretch; }
+  nav .dropdown-content {
+    position: absolute; right: 0; top: 100%; min-width: 168px; padding: 6px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(20,30,45,.16); display: none; z-index: 30;
+  }
+  nav .dropdown-content.open { display: block; }
+  nav .dropdown-content button {
+    display: block; width: 100%; text-align: left; border: none; border-bottom: none;
+    padding: 8px 10px; border-radius: 6px; font-weight: 500; color: var(--ink);
+  }
+  nav .dropdown-content button:hover { background: var(--paper); }
+  nav button .count {
+    background: var(--out); color: #fff; border-radius: 9px; font-size: 11px;
+    padding: 1px 7px; margin-left: 6px; vertical-align: 1px;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 22px 16px 60px; }
+  /* Make the `hidden` attribute authoritative everywhere. Without this, stronger
+     nav rules (nav .dropdown{display:flex}, nav .dropdown-content button{display:block})
+     override the UA [hidden] rule, so role-hidden menu items would still show. */
+  [hidden] { display: none !important; }
+  section[hidden] { display: none; }
+  /* --- Accessibility (WCAG 2.1 AA) ------------------------------------- */
+  /* Visually-hidden but screen-reader-available (e.g. names for icon-only /
+     mark-only table headers). */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  /* Skip link (2.4.1): hidden until keyboard-focused, then reveals at top. */
+  .skip-link {
+    position: absolute; left: 8px; top: -48px; z-index: 100;
+    background: var(--ink); color: #fff; padding: 8px 14px;
+    border-radius: 0 0 8px 8px; font-weight: 600; text-decoration: none;
+    transition: top .15s ease;
+  }
+  .skip-link:focus { top: 0; }
+  /* Visible keyboard focus (2.4.7 / 1.4.11): dark ring on the light UI, a light
+     ring on the dark header so it stays perceivable on both. */
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  header :focus-visible { outline-color: #fff; }
+  /* Respect reduced-motion for the decorative "live" ping (2.2.2/2.3.3). */
+  @media (prefers-reduced-motion: reduce) {
+    .status-pill .live::before, .status-pill .live::after { animation: none; opacity: 0; }
+  }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-bottom: 18px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  /* Only cells that can hold a long unbroken value (e.g. JSON audit detail) may
+     break mid-token — applied per-cell so it doesn't squish other columns. */
+  td.wrap-any { overflow-wrap: anywhere; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 5px;
+    padding: 2px 9px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; }
+  /* Provenance is the signature: solid dot = the consumer acted here (explicit);
+     hollow dot = the hub propagated it (derived). */
+  .badge .dot.explicit { background: currentColor; }
+  .badge .dot.derived { background: transparent; border: 2px solid currentColor; width: 5px; height: 5px; }
+  .b-in { color: var(--in); background: var(--in-bg); }
+  .b-out { color: var(--out); background: var(--out-bg); }
+  .b-supp { color: var(--supp); background: var(--supp-bg); }
+  .b-unknown { color: var(--unknown); background: #f1f3f5; }
+  .legend { font-size: 12.5px; color: var(--ink-soft); margin-top: 10px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+  input[type=text], input[type=password], input[type=email], input[type=number], select, textarea {
+    width: 100%; max-width: 460px; padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 6px; font: inherit; background: #fff;
+  }
+  textarea { max-width: 640px; }
+  .primary, .quiet {
+    font: inherit; font-weight: 600; border-radius: 6px; padding: 8px 16px;
+    cursor: pointer; margin-top: 12px;
+  }
+  .primary { background: var(--action); color: #fff; border: 1px solid var(--action); }
+  .quiet { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  .flash { margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 14px; display: none; }
+  .flash.ok { display: block; background: var(--in-bg); color: var(--in); }
+  .flash.err { display: block; background: var(--out-bg); color: var(--out); }
+  .review { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+  .review h3 { margin: 0 0 6px; font-size: 14.5px; }
+  .review .meta { font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; }
+  .review .origin { background: var(--warn-bg); color: var(--warn); border-radius: 6px; padding: 8px 10px; font-size: 13px; margin: 8px 0; }
+  .tgt { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
+  .tgt:last-of-type { border-bottom: none; }
+  .tgt input { margin: 0; }
+  .empty { color: var(--ink-soft); font-size: 14px; padding: 8px 0; }
+  #login-overlay[hidden] { display: none !important; }
+  details { margin-top: 6px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--action); }
+  .evrow { font-size: 13px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  .subnav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .subnav button {
+    appearance: none; background: #fff; border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 14px; font: inherit; font-size: 13px; font-weight: 600; color: var(--ink-soft); cursor: pointer;
+  }
+  .subnav button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .filters > div { display: flex; flex-direction: column; }
+  .filters label { margin: 0 0 4px; }
+  .filters input, .filters select { max-width: 240px; }
+  .sev { display: inline-block; border-radius: 5px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+  .sev-ok { color: var(--in); background: var(--in-bg); }
+  .sev-warn { color: var(--warn); background: var(--warn-bg); }
+  .sev-breach { color: #fff; background: var(--out); }
+  .muted { color: var(--ink-soft); font-size: 13px; }
+  .reach { font-size: 14px; margin: 4px 0 14px; }
+  h3.rpt { font-size: 14px; margin: 22px 0 8px; }
+  .svc-caps { display: flex; gap: 18px; flex-wrap: wrap; }
+  .svc-caps .chk { display: inline-flex; align-items: center; gap: 7px; margin: 0; font-size: 13.5px; }
+  .svc-caps .chk input { width: auto; }
+  .cred-set { font-size: 12.5px; color: var(--ink-soft); margin: 4px 0 2px; }
+
+  /* ============================================================= *
+   *  Brand layer — default visual identity  *
+   *  (black + gold + cool gray). Local assets only, no CDN.       *
+   * ============================================================= */
+  body {
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  svg.ic { width: 16px; height: 16px; stroke: currentColor; fill: none;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* --- Header: black bar with a gold accent underline --------------------- */
+  header {
+    background: var(--header-bg); color: #f4f6f8;
+    padding: 0 24px; min-height: 60px; align-items: center; gap: 14px;
+    border-bottom: 3px solid var(--gold);
+    box-shadow: 0 1px 0 rgba(0,0,0,.4);
+  }
+  .brand-mark {
+    width: 38px; height: 38px; border-radius: 9px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--gold); color: #14181d; font-weight: 800; font-size: 13px;
+    letter-spacing: .5px; box-shadow: 0 0 0 1px rgba(253,200,47,.35);
+  }
+  header h1 { font-size: 15.5px; font-weight: 700; letter-spacing: .2px; }
+  header .sub { color: #9aa7b4; font-size: 12.5px; }
+  .poc-badge {
+    display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; letter-spacing: .3px;
+    background: rgba(253,200,47,.16); color: var(--gold); border: 1px solid rgba(253,200,47,.32);
+  }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px;
+    border-radius: 999px; font-size: 12px; font-weight: 600; color: #cdd9e4;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+  }
+  .status-pill .live { position: relative; width: 8px; height: 8px; }
+  .status-pill .live::before, .status-pill .live::after {
+    content: ""; position: absolute; inset: 0; border-radius: 50%; background: #34d399;
+  }
+  .status-pill .live::before { animation: ping 1.8s cubic-bezier(0,0,.2,1) infinite; opacity: .75; }
+  @keyframes ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
+  /* Run-mode pill: quiet positive confirmation in the header. Green = production
+     (outbound writes on + NODE_ENV=production); amber = test / non-production. */
+  #mode-pill .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  #mode-pill.mode-prod .dot { background: #34d399; }
+  #mode-pill.mode-prod { color: #86efac; }
+  #mode-pill.mode-test .dot { background: #f59e0b; }
+  #mode-pill.mode-test { color: #f5c26b; }
+  /* Production-readiness check rows (operator System view). On the white card these
+     need AA contrast, so the badge/status colors are darkened from the header-pill
+     variants (which sit on the dark header and pass there). */
+  .rd-pass { color: var(--in); font-weight: 700; }
+  .rd-warn { color: var(--warn); font-weight: 700; }
+  .rd-manual { color: var(--ink-soft); }
+  #sys-readiness td:first-child { width: 22px; text-align: center; font-weight: 700; }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--gold); color: #14181d; font-weight: 800; font-size: 11.5px;
+  }
+  #logout-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* --- Nav: icon tabs with a gold active underline ------------------------ */
+  nav { padding: 0 16px; gap: 2px; box-shadow: inset 0 -1px 0 var(--line); border-bottom: none; }
+  nav button, nav .dropbtn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-bottom: 3px solid transparent; padding: 13px 14px; color: var(--ink-soft);
+  }
+  nav button:hover { color: var(--ink); }
+  nav button[aria-current="page"], nav .dropbtn[aria-current="page"] {
+    color: var(--ink); border-bottom-color: var(--gold);
+  }
+  nav button[aria-current="page"] svg.ic { color: var(--gold-dark); }
+  nav .count { background: var(--out); }
+
+  /* --- Cards: rounded, soft shadow ---------------------------------------- */
+  .card {
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px;
+    border-color: var(--line);
+  }
+  main { max-width: 1180px; }
+  h2 { font-size: 16px; font-weight: 700; }
+
+  /* --- Summary stat cards ------------------------------------------------- */
+  .stat-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px;
+  }
+  @media (max-width: 860px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+
+  /* --- Small screens (phones) -------------------------------------------- */
+  @media (max-width: 640px) {
+    header { padding: 8px 14px; min-height: 0; }
+    nav { padding: 2px 8px; }
+    nav button, nav .dropbtn { padding: 10px 10px; }
+    main { padding: 16px 12px 48px; }
+    .stat-row { grid-template-columns: 1fr; }
+    .card { padding: 16px; }
+    /* Wide data tables scroll horizontally within their card instead of
+       pushing the whole page sideways. */
+    .card > table, .card .scroll-x > table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #matrix, #topo-result, #svc-topo-result, #sys-inbound { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  }
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .stat .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+  .stat .value { font-size: 24px; font-weight: 800; margin-top: 3px; color: var(--ink); }
+  .stat .sub { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+  .stat .ico { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex: none; }
+  .stat .ico svg { width: 22px; height: 22px; }
+  .ico-gold { background: var(--gold-soft); color: var(--gold-dark); }
+  .ico-red  { background: var(--out-bg);   color: var(--out); }
+  .ico-gray { background: #eef1f4;          color: var(--gray8); }
+  .ico-green{ background: var(--in-bg);     color: var(--in); }
+
+  /* --- Section header inside a card (matrix control bar) ------------------ */
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .card-head .titles h2 { margin: 0; }
+  .card-head .titles p { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-soft); }
+  .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .search { position: relative; }
+  .search svg.ic { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-soft); }
+  .search input { padding-left: 32px; max-width: 320px; background: #f7f8fa; }
+
+  /* --- Buttons: gold primary (dark text), icon support ------------------- */
+  .primary, .quiet {
+    display: inline-flex; align-items: center; gap: 7px; border-radius: 8px;
+    padding: 9px 15px; box-shadow: var(--shadow);
+  }
+  .primary { background: var(--action); color: var(--action-ink); border-color: var(--action); }
+  .primary:hover { background: var(--gold-dark); border-color: var(--gold-dark); }
+  .quiet:hover { background: #f5f6f8; }
+  summary { color: var(--ink); font-weight: 600; }
+
+  /* --- Pill status badges (matrix + legend + reused everywhere) ---------- */
+  .badge {
+    border-radius: 999px; padding: 4px 11px; font-size: 12px;
+    border: 1px solid transparent;
+  }
+  .badge .dot { width: 8px; height: 8px; }
+  .badge .dot.derived { width: 7px; height: 7px; }
+  .b-in   { color: #1a5c43; background: var(--in-bg);  border-color: rgba(30,110,80,.22); }
+  .b-out  { color: #8f3323; background: var(--out-bg); border-color: rgba(168,64,47,.22); }
+  .b-supp { color: #444e5e; background: var(--supp-bg); border-color: rgba(86,97,115,.22); }
+  .b-unknown { color: #566069; background: #eef1f4; border-color: var(--line); }
+  .legend .badge { margin-right: 4px; }
+
+  /* Matrix table polish */
+  #matrix table { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  #matrix th { background: #f7f8fa; }
+  #matrix tr:hover td { background: #fafbfc; }
+
+  /* --- Toast notifications ------------------------------------------------ */
+  #toast {
+    position: fixed; bottom: 22px; right: 22px; z-index: 60;
+    display: flex; align-items: center; gap: 10px;
+    background: #14181d; color: #fff; padding: 12px 16px; border-radius: 10px;
+    box-shadow: var(--shadow-lg); border: 1px solid #2a313b; font-size: 14px;
+    transform: translateY(24px); opacity: 0; transition: all .25s ease; pointer-events: none;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast svg.ic { color: var(--gold); }
+
+  /* --- Global "working" spinner (shown while any request is in flight) ----- */
+  #spinner {
+    position: fixed; top: 12px; left: 50%; transform: translate(-50%, -64px);
+    z-index: 70; display: flex; align-items: center; gap: 9px;
+    background: #14181d; color: #fff; padding: 8px 16px; border-radius: 999px;
+    box-shadow: var(--shadow-lg); border: 1px solid #2a313b;
+    font-size: 13px; font-weight: 600; opacity: 0;
+    transition: transform .2s ease, opacity .2s ease; pointer-events: none;
+  }
+  #spinner.show { transform: translate(-50%, 0); opacity: 1; }
+  #spinner .ring {
+    width: 15px; height: 15px; border-radius: 50%;
+    border: 2.5px solid rgba(253,200,47,.3); border-top-color: var(--gold);
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { #spinner .ring { animation-duration: 1.6s; } }
+
+  /* --- Section headers: gold accent bar (applies to every tab) -------- */
+  .card > h2 { position: relative; padding-left: 13px; font-size: 15.5px; }
+  .card > h2::before {
+    content: ""; position: absolute; left: 0; top: 1px; bottom: 1px;
+    width: 4px; border-radius: 2px; background: var(--gold);
+  }
+  /* A short lead paragraph directly under a section header */
+  .card > h2 + p { color: var(--ink-soft); font-size: 13px; margin-top: -4px; }
+
+  /* Sub-tab pills (Reports / Services steps): gold underline when active */
+  .subnav button[aria-selected="true"] {
+    background: var(--ink); color: #fff; border-color: var(--ink);
+    box-shadow: inset 0 -3px 0 var(--gold);
+  }
+
+  /* Approval / review cards: warm gold-tinted accent */
+  .review { border-left: 3px solid var(--gold); border-radius: 10px; box-shadow: var(--shadow); }
+
+  /* --- Login screen ------------------------------------------------------- */
+  #login-overlay .card {
+    width: 380px; border-radius: 14px; box-shadow: var(--shadow-lg);
+    padding: 28px 28px 24px; text-align: center;
+  }
+  #login-overlay .card > h2 { padding-left: 0; text-align: center; }
+  #login-overlay .card > h2::before { display: none; }
+  #login-overlay label { text-align: left; }
+  #login-overlay input { max-width: none; }
+  .login-mark {
+    width: 54px; height: 54px; border-radius: 13px; margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--gold); color: #14181d; font-weight: 800; font-size: 18px; letter-spacing: .5px;
+    box-shadow: 0 4px 14px rgba(253,200,47,.4);
+  }
+  .login-strip { height: 4px; background: var(--gold); border-radius: 3px; margin: 16px 0 4px; }
+  /* Run-mode banner (test mode / non-production). Amber so it reads as a caution,
+     not an error; sticky so it stays visible while scrolling. */
+  #mode-banner {
+    position: sticky; top: 0; z-index: 60;
+    background: #f59e0b; color: #1a1a1a;
+    font-size: 13px; font-weight: 700; text-align: center;
+    padding: 7px 16px; line-height: 1.4;
+    border-bottom: 1px solid rgba(0,0,0,.28);
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<!-- Local inline icon sprite (no CDN). Referenced via <svg class="ic" aria-hidden="true"><use href="#ic-..."/>. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="ic-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
+  <symbol id="ic-zap" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+  <symbol id="ic-check-square" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="ic-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+  <symbol id="ic-network" viewBox="0 0 24 24"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></symbol>
+  <symbol id="ic-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></symbol>
+  <symbol id="ic-bar-chart" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></symbol>
+  <symbol id="ic-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="ic-chevron-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="ic-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+  <symbol id="ic-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="ic-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></symbol>
+  <symbol id="ic-server" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="ic-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="ic-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+  <symbol id="ic-check-circle" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+</svg>
+<div id="toast" role="status" aria-live="polite"><svg class="ic" aria-hidden="true"><use href="#ic-check-circle"/></svg><span id="toast-message"></span></div>
+<div id="spinner" role="status" aria-live="polite"><span class="ring"></span><span>Working…</span></div>
+<div id="mode-banner" role="status" aria-live="polite" hidden></div>
+<header>
+  <div class="brand-mark" id="brand-mark" aria-hidden="true">CH</div>
+  <img id="brand-logo" alt="" hidden style="height:34px;max-width:160px;object-fit:contain">
+  <div style="display:flex;flex-direction:column;gap:1px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <h1 id="brand-title">Universal Opt-Out Hub</h1>
+      <span class="poc-badge">Proof of Concept</span>
+    </div>
+    <span class="sub">Universal Consent Console · cross-system reconciliation engine</span>
+  </div>
+  <span style="flex:1"></span>
+  <span id="mode-pill" class="status-pill" hidden><span class="dot"></span><span id="mode-pill-text"></span></span>
+  <span id="systems-pill" class="status-pill" hidden><span class="live"></span><span id="systems-connected">0 systems connected</span></span>
+  <span id="user-avatar" class="avatar" hidden></span>
+  <span id="user-chip" style="font-size:13px;color:#cdd9e4"></span>
+  <button id="logout-btn" hidden data-act="logout" style="font:inherit;font-size:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#cdd9e4;border-radius:7px;padding:6px 12px;cursor:pointer"><svg class="ic" aria-hidden="true"><use href="#ic-log-out"/></svg> Sign out</button>
+</header>
+<nav aria-label="Primary">
+  <button aria-current="page" data-tab="matrix"><svg class="ic" aria-hidden="true"><use href="#ic-grid"/></svg>Consent matrix</button>
+  <button data-tab="approvals"><svg class="ic" aria-hidden="true"><use href="#ic-check-square"/></svg>Approvals <span class="count" id="pending-count" hidden>0</span></button>
+  <div class="dropdown" id="ops-menu">
+    <button type="button" class="dropbtn" id="ops-dropbtn" aria-haspopup="true" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#ic-server"/></svg>Operations <svg class="ic" aria-hidden="true" style="width:14px"><use href="#ic-chevron-down"/></svg></button>
+    <div class="dropdown-content" id="ops-dropdown" role="menu">
+      <button type="button" role="menuitem" data-tab="inject">Simulate event</button>
+      <button type="button" role="menuitem" data-tab="alerts">Alerts</button>
+      <button type="button" role="menuitem" data-tab="system" id="ops-system-item">System</button>
+    </div>
+  </div>
+  <div class="dropdown" id="reports-menu">
+    <button type="button" class="dropbtn" id="reports-dropbtn" aria-haspopup="true" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#ic-bar-chart"/></svg>Reports <svg class="ic" aria-hidden="true" style="width:14px"><use href="#ic-chevron-down"/></svg></button>
+    <div class="dropdown-content" id="reports-dropdown" role="menu">
+      <button type="button" role="menuitem" data-tab="reports">Reports</button>
+      <button type="button" role="menuitem" data-tab="audit">Audit log</button>
+      <button type="button" role="menuitem" data-tab="topology">Topology</button>
+    </div>
+  </div>
+  <div class="dropdown" id="admin-menu" hidden>
+    <button type="button" class="dropbtn" id="admin-dropbtn" aria-haspopup="true" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#ic-settings"/></svg>Admin <svg class="ic" aria-hidden="true" style="width:14px"><use href="#ic-chevron-down"/></svg></button>
+    <div class="dropdown-content" id="admin-dropdown" role="menu">
+      <button type="button" role="menuitem" data-tab="services">Services</button>
+      <button type="button" role="menuitem" data-tab="users">Users</button>
+      <button type="button" role="menuitem" data-tab="settings">Settings</button>
+      <button type="button" role="menuitem" data-tab="appearance">Appearance</button>
+    </div>
+  </div>
+</nav>
+<main id="main-content" tabindex="-1">
+
+<section id="tab-matrix">
+  <div class="stat-row">
+    <div class="stat">
+      <div>
+        <div class="label">Identities Managed</div>
+        <div class="value" id="stat-identities">—</div>
+        <div class="sub">Phone &amp; email records</div>
+      </div>
+      <div class="ico ico-gold"><svg class="ic" aria-hidden="true"><use href="#ic-users"/></svg></div>
+    </div>
+    <div class="stat">
+      <div>
+        <div class="label">Active Opt-Outs</div>
+        <div class="value" id="stat-optouts" style="color:var(--out)">—</div>
+        <div class="sub">Identities suppressed somewhere</div>
+      </div>
+      <div class="ico ico-red"><svg class="ic" aria-hidden="true"><use href="#ic-ban"/></svg></div>
+    </div>
+    <div class="stat">
+      <div>
+        <div class="label">Connected Services</div>
+        <div class="value" id="stat-systems">—</div>
+        <div class="sub">SMS &amp; email platforms</div>
+      </div>
+      <div class="ico ico-gray"><svg class="ic" aria-hidden="true"><use href="#ic-server"/></svg></div>
+    </div>
+    <div class="stat">
+      <div>
+        <div class="label">Pending Reviews</div>
+        <div class="value" id="stat-reviews">—</div>
+        <div class="sub">Opt-in propagation queue</div>
+      </div>
+      <div class="ico ico-green"><svg class="ic" aria-hidden="true"><use href="#ic-check-square"/></svg></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="titles">
+        <h2>Consent State Matrix</h2>
+        <p>Cross-system reconciliation across all messaging platforms and channels</p>
+      </div>
+      <div class="toolbar">
+        <div class="search"><svg class="ic" aria-hidden="true"><use href="#ic-search"/></svg>
+          <input type="text" id="matrix-search" placeholder="Search identity…" aria-label="Search identities" data-input="filter-matrix"></div>
+        <button class="quiet" data-act="reconcile"><svg class="ic" aria-hidden="true"><use href="#ic-refresh"/></svg> Run reconciler</button>
+      </div>
+    </div>
+    <div id="matrix"></div>
+    <div class="legend">
+      <span class="badge b-in"><span class="dot explicit"></span>opted in</span>
+      <span class="badge b-out"><span class="dot explicit"></span>opted out</span>
+      <span class="badge b-supp"><span class="dot derived"></span>suppressed</span>
+      &nbsp; Solid dot: the person acted on that system. Hollow dot: the hub propagated it.
+    </div>
+    <div class="flash" role="status" id="matrix-flash"></div>
+  </div>
+</section>
+
+<section id="tab-inject" hidden>
+  <div class="card">
+    <h2>Simulate a platform event</h2>
+    <p style="font-size:13.5px;color:var(--ink-soft);margin-top:0">
+      Stands in for a webhook or batch import from a real platform. Opt-ins require consent evidence.
+    </p>
+    <label for="inj-system">System</label>
+    <select id="inj-system"></select>
+    <label for="inj-value">Phone or email</label>
+    <input type="text" id="inj-value" placeholder="+1 208 555 0142 or person@example.edu">
+    <label for="inj-direction">Event</label>
+    <select id="inj-direction">
+      <option value="opt_out">Opt-out (STOP / unsubscribe)</option>
+      <option value="opt_in">Opt-in (START / signup)</option>
+    </select>
+    <label for="inj-source">Source detail</label>
+    <input type="text" id="inj-source" placeholder="STOP keyword, unsubscribe link, web form …">
+    <div id="inj-evidence" hidden>
+      <label for="inj-method">Consent method (evidence)</label>
+      <input type="text" id="inj-method" placeholder="START keyword, web form, preference center …">
+      <label for="inj-language">Consent language shown to the person</label>
+      <textarea id="inj-language" rows="2" placeholder="I agree to receive text messages from …"></textarea>
+    </div>
+    <label for="inj-occurred">Occurred at (optional — backdate to simulate a late batch event)</label>
+    <input type="text" id="inj-occurred" placeholder="2026-06-10T14:00:00Z">
+    <br>
+    <button class="primary" data-act="inject">Ingest event</button>
+    <div class="flash" role="status" id="inj-flash"></div>
+  </div>
+</section>
+
+<section id="tab-approvals" hidden>
+  <div class="card">
+    <h2>Opt-in propagation reviews</h2>
+    <p style="font-size:13.5px;color:var(--ink-soft);margin-top:0">
+      The person's opt-in is already honored where it happened. Each review asks one question:
+      does the consent evidence justify opting them back in anywhere else? Approving is an
+      attestation, not a button — explicit opt-outs are never overridden, even if selected.
+    </p>
+    <div id="reviews"></div>
+  </div>
+</section>
+
+<section id="tab-alerts" hidden>
+  <div class="card">
+    <h2>Reconciliation alerts</h2>
+    <div id="alerts"></div>
+  </div>
+</section>
+
+<section id="tab-topology" hidden>
+  <div class="card">
+    <h2>Service-discovered topology</h2>
+    <p class="muted" style="margin-top:0">
+      Departments/pools/codes are <strong>discovered from each sending service</strong>
+      and used as reporting/attribution metadata only — never a consent-scope authority
+      (ADR-0002). Where a service can't report groupings, codes are ungrouped and can be
+      annotated manually; discovered facts and manual annotations are kept provenance-separate.
+    </p>
+    <div class="filters">
+      <div>
+        <label for="topo-system">System</label>
+        <select id="topo-system" data-change="load-topology"></select>
+      </div>
+      <div><button class="primary" style="margin:0" data-act="sync-topology">Sync from service</button></div>
+    </div>
+    <div class="flash" role="status" id="topo-flash"></div>
+    <div id="topo-result" style="margin-top:14px"></div>
+  </div>
+</section>
+
+<section id="tab-audit" hidden>
+  <div class="card" id="consent-prune-card" hidden>
+    <h2>Consent-check audit retention</h2>
+    <p class="muted" style="margin-top:0">
+      The consent-check API logs every decision to a separate high-volume table (ADR-0004 §7).
+      Pruning enforces the split-retention policy: <strong>suppress</strong> decisions (opt-out evidence)
+      are kept long-term; <strong>allow</strong> and <strong>error</strong> rows age out quickly.
+      Production runs this on a schedule; you can also run it now.
+    </p>
+    <button class="quiet" data-act="prune-checks">Prune now</button>
+    <div class="flash" role="status" id="consent-prune-flash"></div>
+  </div>
+  <div class="card" id="audit-prune-card" hidden>
+    <h2>Operational audit-log retention</h2>
+    <p class="muted" style="margin-top:0">
+      The operational <strong>audit_log</strong> records routine activity (ingest, reconcile runs, alerts)
+      and grows unbounded. Pruning removes rows older than the configured window
+      (<em>Retain operational audit log</em> in Settings), while <strong>compliance-relevant</strong>
+      actions — approval decisions, config changes, API-key create/revoke — are kept indefinitely.
+      Production runs this on a schedule; you can also run it now.
+    </p>
+    <button class="quiet" data-act="prune-audit">Prune now</button>
+    <div class="flash" role="status" id="audit-prune-flash"></div>
+  </div>
+  <div class="card">
+    <h2>Audit log (latest 100)</h2>
+    <div id="audit"></div>
+  </div>
+</section>
+
+<section id="tab-reports" hidden>
+  <div class="subnav" role="tablist">
+    <button role="tab" aria-selected="true" data-rpt="lookup">Identity lookup</button>
+    <button role="tab" aria-selected="false" data-rpt="audit">Audit / user actions</button>
+    <button role="tab" aria-selected="false" data-rpt="lag">Opt-out sync-lag</button>
+    <button role="tab" aria-selected="false" data-rpt="liability">Open liability</button>
+    <button role="tab" aria-selected="false" data-rpt="activity">Activity summary</button>
+    <button role="tab" aria-selected="false" data-rpt="topology">Topology attribution</button>
+  </div>
+
+  <div id="rpt-lookup" class="card">
+    <h2>Look up a phone number or email</h2>
+    <p class="muted" style="margin-top:0">
+      Current consent state across every system plus the full event history — the
+      record produced for a TCPA inquiry. Input is normalized, so any format matches.
+    </p>
+    <div class="filters">
+      <div style="flex:1">
+        <label for="lk-q">Phone or email</label>
+        <input type="text" id="lk-q" placeholder="+1 208 555 0142 or person@example.edu"
+               data-enter="lookup" style="max-width:460px">
+      </div>
+      <div><button class="primary" style="margin:0" data-act="lookup">Search</button></div>
+    </div>
+    <div class="flash" role="status" id="lk-flash"></div>
+    <div id="lk-result"></div>
+  </div>
+
+  <div id="rpt-audit" class="card" hidden>
+    <h2>Audit / user-action search</h2>
+    <p class="muted" style="margin-top:0">Search every recorded action by who performed it, action type, and date range.</p>
+    <div class="filters">
+      <div><label for="au-actor">Actor</label><select id="au-actor"><option value="">any</option></select></div>
+      <div><label for="au-action">Action</label><select id="au-action"><option value="">any</option></select></div>
+      <div><label for="au-from">From</label><input type="text" id="au-from" placeholder="2026-01-01"></div>
+      <div><label for="au-to">To</label><input type="text" id="au-to" placeholder="2026-12-31"></div>
+      <div><button class="primary" style="margin:0" data-act="audit">Search</button></div>
+    </div>
+    <div id="au-result" style="margin-top:14px"></div>
+  </div>
+
+  <div id="rpt-lag" class="card" hidden>
+    <h2>Opt-out sync-lag</h2>
+    <p class="muted" style="margin-top:0">
+      Time from each opt-out to confirmed suppression on every target system. The
+      regulatory ceiling is 10 business days (<span class="sev sev-breach">breach</span>);
+      the operational target is minutes (<span class="sev sev-warn">warn</span> = over target).
+    </p>
+    <div class="filters">
+      <div><label for="lag-from">From</label><input type="text" id="lag-from" placeholder="2026-01-01"></div>
+      <div><label for="lag-to">To</label><input type="text" id="lag-to" placeholder="2026-12-31"></div>
+      <div><button class="primary" style="margin:0" data-act="lag">Run</button></div>
+    </div>
+    <div id="lag-result" style="margin-top:14px"></div>
+  </div>
+
+  <div id="rpt-liability" class="card" hidden>
+    <h2>Open liability — current risk surface</h2>
+    <p class="muted" style="margin-top:0">
+      Under-suppression is the only thing carrying a statutory penalty. These are the
+      open items where someone may still be reachable after revoking.
+    </p>
+    <div id="liab-result"></div>
+  </div>
+
+  <div id="rpt-activity" class="card" hidden>
+    <h2>Activity / volume summary</h2>
+    <p class="muted" style="margin-top:0">Event counts by system, channel, direction, and provenance.</p>
+    <div class="filters">
+      <div><label for="act-from">From</label><input type="text" id="act-from" placeholder="2026-01-01"></div>
+      <div><label for="act-to">To</label><input type="text" id="act-to" placeholder="2026-12-31"></div>
+      <div><button class="primary" style="margin:0" data-act="activity">Run</button></div>
+    </div>
+    <div id="act-result" style="margin-top:14px"></div>
+  </div>
+
+  <div id="rpt-topology" class="card" hidden>
+    <h2>Topology attribution</h2>
+    <p class="muted" style="margin-top:0">
+      Inbound event volume by the receiving code, attributed to its department/pool
+      through discovered topology. The discovered pool and any manual annotation are
+      shown side by side — reporting only, never a consent input (ADR-0002 §4).
+    </p>
+    <div class="filters">
+      <div><label for="topr-from">From</label><input type="text" id="topr-from" placeholder="2026-01-01"></div>
+      <div><label for="topr-to">To</label><input type="text" id="topr-to" placeholder="2026-12-31"></div>
+      <div><button class="primary" style="margin:0" data-act="topology-report">Run</button></div>
+    </div>
+    <div id="topr-result" style="margin-top:14px"></div>
+  </div>
+</section>
+
+<section id="tab-system" hidden>
+  <div class="stat-row">
+    <div class="stat">
+      <div>
+        <div class="label">Sync-lag breaches</div>
+        <div class="value" id="sys-breaches">—</div>
+        <div class="sub">Past the 10-business-day ceiling</div>
+      </div>
+      <div class="ico ico-red"><svg class="ic" aria-hidden="true"><use href="#ic-bell"/></svg></div>
+    </div>
+    <div class="stat">
+      <div>
+        <div class="label">Unconfirmed writes</div>
+        <div class="value" id="sys-unconfirmed">—</div>
+        <div class="sub">Propagations not yet converged</div>
+      </div>
+      <div class="ico ico-gold"><svg class="ic" aria-hidden="true"><use href="#ic-refresh"/></svg></div>
+    </div>
+    <div class="stat">
+      <div>
+        <div class="label">Open reconcile alerts</div>
+        <div class="value" id="sys-alerts">—</div>
+        <div class="sub">Drift detected, unresolved</div>
+      </div>
+      <div class="ico ico-red"><svg class="ic" aria-hidden="true"><use href="#ic-ban"/></svg></div>
+    </div>
+    <div class="stat">
+      <div>
+        <div class="label">Pending reviews</div>
+        <div class="value" id="sys-reviews">—</div>
+        <div class="sub">Opt-in propagation decisions</div>
+      </div>
+      <div class="ico ico-gold"><svg class="ic" aria-hidden="true"><use href="#ic-check-square"/></svg></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Production readiness</h2>
+    <p class="muted" style="margin-top:0">
+      Automated checks of this deployment's configuration, plus manual items to verify.
+      Kept here (not in the header) so the console stays clean.
+    </p>
+    <div id="sys-readiness"></div>
+  </div>
+
+  <div class="card">
+    <h2>Sync-lag</h2>
+    <p class="muted" style="margin-top:0">
+      Opt-outs that haven't converged on a target system within the threshold. The scheduled
+      scan (below) also writes each alert to the audit log and, if configured, to an outbound webhook.
+    </p>
+    <div id="sys-synclag"></div>
+    <button class="primary" id="sys-scan-btn" style="margin-top:12px" data-act="alert-scan">Run sync-lag scan now</button>
+    <span class="muted" id="sys-scan-note" style="margin-left:10px"></span>
+  </div>
+
+  <div class="card">
+    <h2>Scheduled jobs</h2>
+    <p class="muted" style="margin-top:0">
+      In-process timers (single-process). 0 = disabled; change intervals under
+      <strong>Admin → Settings</strong>. Each job also has an on-demand route.
+    </p>
+    <div id="sys-scheduler"></div>
+  </div>
+
+  <div class="card">
+    <h2>Per-platform inbound status</h2>
+    <p class="muted" style="margin-top:0">
+      When each active service last delivered an inbound opt-out/opt-in (by webhook or poll),
+      when it was last polled, and how many inbound events landed in the last 30 days. Use
+      <strong>Poll now</strong> to pull immediately from a poll-delivery service.
+    </p>
+    <div id="sys-inbound"></div>
+    <button class="quiet" id="sys-pollall-btn" style="margin-top:12px" data-act="poll-all">Poll all now</button>
+    <span class="muted" id="sys-pollall-note" style="margin-left:10px"></span>
+  </div>
+
+  <div class="card">
+    <h2>Health &amp; metrics endpoints</h2>
+    <p class="muted" style="margin-top:0">For load balancers, orchestrators, and Prometheus scraping.</p>
+    <table>
+      <tr><th>Endpoint</th><th>Purpose</th></tr>
+      <tr><td><code>GET /healthz</code></td><td>Liveness — the process is up.</td></tr>
+      <tr><td><code>GET /readyz</code></td><td>Readiness — verifies database reachability (503 if down).</td></tr>
+      <tr><td><code>GET /metrics</code></td><td>Prometheus text exposition. Requires a bearer token when <code>METRICS_TOKEN</code> is set.</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="tab-services" hidden>
+  <div class="card">
+    <h2>Sending services</h2>
+    <p class="muted" style="margin-top:0">
+      The platforms the hub reconciles. Adding one is two steps:
+      <strong>register &amp; connect</strong> (pick a type, name it, store credentials, test),
+      then <strong>discover &amp; review</strong> (pull its pools and codes, confirm, and annotate
+      any the service can't report). Capabilities and credentials govern how the hub talks to a
+      service — never what consent it records (ADR-0002).
+    </p>
+    <div id="services-table"></div>
+    <div style="display:flex;align-items:center;gap:14px;margin-top:6px">
+      <button class="primary" style="margin:0" data-act="new-service">Add a service</button>
+      <label class="muted" style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="svc-show-archived" data-change="load-services" style="margin:0"> Show archived
+      </label>
+    </div>
+  </div>
+
+  <div class="card" id="svc-editor" hidden>
+    <h2 id="svc-editor-title">Register a service</h2>
+    <div class="subnav" role="tablist" style="margin-bottom:18px">
+      <button role="tab" aria-selected="true" data-step="connect">1 · Register &amp; connect</button>
+      <button role="tab" aria-selected="false" data-step="discover" id="svc-step-discover" disabled>2 · Discover &amp; review</button>
+    </div>
+
+    <div id="svc-step-connect">
+      <label for="svc-type">Service type</label>
+      <select id="svc-type" data-change="on-type-change"></select>
+      <p class="muted" id="svc-type-blurb" style="margin:4px 0 0"></p>
+
+      <label for="svc-name">Display name</label>
+      <input type="text" id="svc-name" placeholder="Admissions texting">
+
+      <label for="svc-id">System id <span class="muted" style="font-weight:400">— permanent lowercase slug</span></label>
+      <input type="text" id="svc-id" placeholder="admissions_twilio">
+
+      <div class="filters" style="margin-top:6px">
+        <div>
+          <label for="svc-channel">Consent channel</label>
+          <select id="svc-channel"><option value="sms">sms</option><option value="email">email</option></select>
+        </div>
+        <div>
+          <label for="svc-category">Message category</label>
+          <select id="svc-category"></select>
+        </div>
+        <div>
+          <label for="svc-delivery">Event delivery</label>
+          <select id="svc-delivery"><option>webhook</option><option>poll</option><option>export</option></select>
+        </div>
+        <div>
+          <label for="svc-granularity">Topology granularity</label>
+          <select id="svc-granularity"><option>none</option><option>code</option><option>pool</option><option>group</option></select>
+        </div>
+      </div>
+
+      <label style="margin-top:14px">Capabilities</label>
+      <div class="svc-caps">
+        <label class="chk"><input type="checkbox" id="svc-cap-optout"> Hub can write opt-outs</label>
+        <label class="chk"><input type="checkbox" id="svc-cap-optin"> Hub can write opt-ins</label>
+        <label class="chk"><input type="checkbox" id="svc-cap-discover" data-change="sync-granularity"> Can discover topology</label>
+      </div>
+      <p class="muted" id="svc-caps-note" style="margin:6px 0 0"></p>
+
+      <div id="svc-creds-block">
+        <label style="margin-top:16px">Credentials <span class="muted" style="font-weight:400">— stored server-side, never shown again</span></label>
+        <div id="svc-creds"></div>
+      </div>
+
+      <div style="margin-top:14px">
+        <button class="primary" data-act="save-service" id="svc-save-btn">Register service</button>
+        <button class="quiet" data-act="test-service" id="svc-test-btn" hidden>Test connection</button>
+        <button class="quiet" data-act="provision-webhook" id="svc-provision-btn" hidden title="Point this platform's inbound STOP/START webhook at this hub">Provision inbound webhook</button>
+        <button class="quiet" data-act="close-editor">Close</button>
+      </div>
+      <div class="flash" role="status" id="svc-flash"></div>
+      <div id="svc-test-result" style="margin-top:12px"></div>
+    </div>
+
+    <div id="svc-step-discover-pane" hidden>
+      <p class="muted" style="margin-top:0">
+        Pull the service's current pools and codes. Discovered groupings are reporting metadata
+        only. Where the service can't report one, annotate the code by hand — discovered facts and
+        manual annotations stay provenance-separate, and any conflict shows both.
+      </p>
+      <button class="primary" data-act="discover-service" id="svc-discover-btn">Discover from service</button>
+      <div class="flash" role="status" id="svc-discover-flash"></div>
+      <div id="svc-topo-result" style="margin-top:14px"></div>
+    </div>
+
+    <div id="svc-apikeys-block" hidden style="margin-top:22px;border-top:1px solid var(--line);padding-top:16px">
+      <h3 style="margin:0 0 4px">Consent-check API keys</h3>
+      <p class="muted" style="margin-top:0">
+        Keys let this service's own sender call <span class="mono">POST /api/v1/consent/check</span>
+        before sending (ADR-0004). Each key is scoped to this system, shown once, and revocable instantly.
+      </p>
+      <div id="svc-apikeys-list"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <input type="text" id="svc-apikey-label" placeholder="e.g. admissions sender (prod)" aria-label="API key label" style="margin:0;flex:1" data-enter="issue-apikey">
+        <input type="number" id="svc-apikey-rate" min="0" step="1" placeholder="rate/s" aria-label="Rate limit (requests per second)" title="Requests per second for this key. Blank = hub default; 0 = unlimited." style="margin:0;width:90px" data-enter="issue-apikey">
+        <button class="primary" style="margin:0" data-act="issue-apikey">Issue key</button>
+      </div>
+      <div class="flash" role="status" id="svc-apikey-flash"></div>
+    </div>
+  </div>
+</section>
+
+<section id="tab-users" hidden>
+  <div class="card">
+    <h2>Create user</h2>
+    <label for="nu-username">Username</label>
+    <input type="text" id="nu-username" placeholder="j.doe">
+    <label for="nu-display">Display name</label>
+    <input type="text" id="nu-display" placeholder="Jane Doe">
+    <label for="nu-role">Role</label>
+    <select id="nu-role">
+      <option value="viewer">viewer — read-only</option>
+      <option value="operator">operator — can record events</option>
+      <option value="approver">approver — can decide reviews</option>
+      <option value="admin">admin — can manage users</option>
+    </select>
+    <label for="nu-password">Password (leave blank for SSO-only account)</label>
+    <input type="text" id="nu-password" placeholder="min 10 characters">
+    <br><button class="primary" data-act="create-user">Create user</button>
+    <div class="flash" role="status" id="nu-flash"></div>
+  </div>
+  <div class="card">
+    <h2>Users</h2>
+    <div id="users-table"></div>
+  </div>
+</section>
+
+<section id="tab-settings" hidden>
+  <div class="card">
+    <h2>Settings</h2>
+    <p class="muted" style="margin-top:0">
+      Runtime configuration. Changes apply immediately (interval changes reload the scheduler)
+      and are audited. Stored in the database — an env var only seeds the initial default.
+      Secrets (encryption key, database, SSO) are not configurable here.
+    </p>
+    <div id="settings-body"></div>
+    <button class="primary" data-act="save-settings">Save settings</button>
+    <div class="flash" role="status" id="settings-flash"></div>
+  </div>
+
+  <div class="card">
+    <h2>Consent categories &amp; opt-out cascade</h2>
+    <p class="muted" style="margin-top:0">
+      Each service carries a message category (set on the Services screen). An opt-out
+      cascades from its <strong>source</strong> category (row) to the checked
+      <strong>target</strong> categories (columns). A <strong>protected</strong>
+      category — e.g. emergency — is never suppressed; its column is locked. Changes
+      apply immediately and are audited.
+    </p>
+    <div id="categories-body"></div>
+    <div class="flash" role="status" id="categories-flash"></div>
+    <h3 class="rpt">Add a category</h3>
+    <div class="filters">
+      <div><label for="cat-key">Key</label><input id="cat-key" placeholder="e.g. billing"></div>
+      <div><label for="cat-label">Label</label><input id="cat-label" placeholder="e.g. Billing / account"></div>
+      <div><label for="cat-protected">Protected (never suppressed)</label>
+        <input type="checkbox" id="cat-protected" style="width:auto;margin:8px 0 0"></div>
+    </div>
+    <button class="quiet" data-act="add-category">Add category</button>
+  </div>
+</section>
+
+<section id="tab-appearance" hidden>
+  <div class="card">
+    <h2>Appearance</h2>
+    <p class="muted" style="margin-top:0">
+      Make the console your own — names, a logo and favicon, and a full color palette.
+      These apply everywhere, including the sign-in screen and the browser tab.
+      Leave a field blank (or reset a color) to fall back to the default.
+    </p>
+
+    <label for="br-orgname">Organization name <span class="muted">(header + sign-in screen)</span></label>
+    <input type="text" id="br-orgname" maxlength="80" placeholder="e.g. Acme University">
+
+    <label for="br-browser-title" style="margin-top:14px">Browser tab title <span class="muted">(the &lt;title&gt; / bookmark text)</span></label>
+    <input type="text" id="br-browser-title" maxlength="120" placeholder="e.g. Acme Opt-Out Console">
+
+    <label for="br-logo-file" style="margin-top:14px">Logo <span class="muted">(PNG/SVG/JPG, up to ~512&nbsp;KB)</span></label>
+    <div style="display:flex;align-items:center;gap:14px">
+      <img id="br-logo-preview" alt="" style="height:38px;max-width:180px;object-fit:contain;border-radius:4px;background:#fff;border:1px solid var(--line);padding:2px" hidden>
+      <input type="file" id="br-logo-file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" data-change="on-logo-pick">
+      <button class="quiet" style="margin:0;padding:4px 10px" type="button" data-act="clear-logo">Remove logo</button>
+    </div>
+
+    <label for="br-favicon-file" style="margin-top:14px">Favicon <span class="muted">(browser tab icon, PNG/SVG/ICO, up to ~140&nbsp;KB)</span></label>
+    <div style="display:flex;align-items:center;gap:14px">
+      <img id="br-favicon-preview" alt="" style="height:24px;width:24px;object-fit:contain;border-radius:4px;background:#fff;border:1px solid var(--line);padding:2px" hidden>
+      <input type="file" id="br-favicon-file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/x-icon,image/vnd.microsoft.icon" data-change="on-favicon-pick">
+      <button class="quiet" style="margin:0;padding:4px 10px" type="button" data-act="clear-favicon">Remove favicon</button>
+    </div>
+
+    <label style="margin-top:18px">Color palette</label>
+    <div style="display:flex;gap:22px 28px;flex-wrap:wrap">
+      <div><label for="br-accent_color" style="font-weight:400">Accent / links</label><br><input type="color" id="br-accent_color" value="#1f4ab8" style="width:64px;height:34px;padding:2px"></div>
+      <div><label for="br-bg_color" style="font-weight:400">Page background</label><br><input type="color" id="br-bg_color" value="#eef1f3" style="width:64px;height:34px;padding:2px"></div>
+      <div><label for="br-header_color" style="font-weight:400">Header bar</label><br><input type="color" id="br-header_color" value="#182230" style="width:64px;height:34px;padding:2px"></div>
+      <div><label for="br-text_color" style="font-weight:400">Body text</label><br><input type="color" id="br-text_color" value="#182230" style="width:64px;height:34px;padding:2px"></div>
+      <div><label for="br-card_color" style="font-weight:400">Cards</label><br><input type="color" id="br-card_color" value="#ffffff" style="width:64px;height:34px;padding:2px"></div>
+      <div><label for="br-optin_color" style="font-weight:400">Opt-in status</label><br><input type="color" id="br-optin_color" value="#1e6e50" style="width:64px;height:34px;padding:2px"></div>
+      <div><label for="br-optout_color" style="font-weight:400">Opt-out status</label><br><input type="color" id="br-optout_color" value="#a8402f" style="width:64px;height:34px;padding:2px"></div>
+      <div><label for="br-suppressed_color" style="font-weight:400">Suppressed status</label><br><input type="color" id="br-suppressed_color" value="#56657a" style="width:64px;height:34px;padding:2px"></div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:8px 0 0">Tip: keep the header a dark color — its text is light. Changes preview live after Save.</p>
+
+    <br>
+    <button class="primary" data-act="save-branding">Save appearance</button>
+    <button class="quiet" data-act="reset-branding">Reset to defaults</button>
+    <div class="flash" role="status" id="br-flash"></div>
+  </div>
+</section>
+</main>
+
+<div id="login-overlay" role="dialog" aria-modal="true" aria-labelledby="login-heading" hidden style="position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;z-index:10">
+  <div class="card">
+    <div class="login-mark" id="login-mark">CH</div>
+    <img id="login-logo" alt="" hidden style="height:42px;max-width:220px;object-fit:contain;display:block;margin:0 auto 12px">
+    <h2 id="login-heading" style="font-size:18px">Sign in</h2>
+    <p style="font-size:13px;color:var(--ink-soft);margin-top:2px"><span id="login-title">College of Southern Idaho</span> · Consent Console</p>
+    <div class="login-strip"></div>
+    <label for="li-username">Username</label>
+    <input type="text" id="li-username" autocomplete="username">
+    <label for="li-password">Password</label>
+    <input type="password" id="li-password" autocomplete="current-password" data-enter="login">
+    <br><button class="primary" data-act="login" style="width:100%;justify-content:center;margin-top:14px">Sign in</button>
+    <div id="sso-buttons"></div>
+    <div class="flash" role="status" id="li-flash"></div>
+  </div>
+</div>
+<script src="/app.js" defer></script>
+</body>
+</html>

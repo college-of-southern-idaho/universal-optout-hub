@@ -1,0 +1,15 @@
+# Local development database. Run: docker compose up -d
+# Matches the default DATABASE_URL in .env.example / src/db.ts.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: hub
+      POSTGRES_PASSWORD: hub_dev_password
+      POSTGRES_DB: optout_hub
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:

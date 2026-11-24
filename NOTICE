@@ -1,0 +1,14 @@
+Universal Opt-Out Synchronization Hub
+Copyright 2026 College of Southern Idaho
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This software was developed at College of Southern Idaho.
+
+---
+
+Third-party components are distributed under their own licenses. This
+software depends on open-source packages (managed via npm) whose licenses
+are recorded in their respective package metadata under node_modules/. No
+third-party attribution notices are required to be reproduced here at this
+time; add any that become required to this NOTICE file.

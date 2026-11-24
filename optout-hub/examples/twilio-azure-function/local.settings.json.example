@@ -1,0 +1,11 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+
+    "CONSENT_HUB_BASE": "https://your-hub-domain.edu",
+    "CONSENT_HUB_SYSTEM_ID": "twilio_csi",
+    "CONSENT_HUB_API_KEY": "oohk_replace_me"
+  }
+}

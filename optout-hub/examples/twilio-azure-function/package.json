@@ -1,0 +1,20 @@
+{
+  "name": "twilio-inbound-consent-relay",
+  "version": "1.0.0",
+  "description": "Azure Function (v4) that relays Twilio inbound STOP/START to the Consent Hub's /api/v1/consent/report endpoint, without repointing Twilio's inbound webhook away from your app.",
+  "main": "dist/src/functions/*.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "start": "func start",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.16.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.9.3"
+  }
+}
