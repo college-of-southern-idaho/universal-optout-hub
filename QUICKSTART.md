@@ -8,7 +8,20 @@ A runnable build of the universal opt-out synchronization hub described in `DESI
 
 > The application lives in the **`optout-hub/`** directory. Run the commands below from there, and note that the code paths referenced throughout this document (`src/…`, `db/…`, `web/…`, `test/…`, `examples/…`) are relative to `optout-hub/`.
 
-## Run it
+## Run with Docker (full stack)
+
+The fastest path to a running instance — **nginx (TLS) + app + PostgreSQL**, migrations applied automatically. From the repository root:
+
+```bash
+cd optout-hub/deploy
+cp .env.example .env                  # set APP_SECRET + POSTGRES_PASSWORD
+./gen-selfsigned-cert.sh localhost    # testing cert (use a real one in production)
+docker compose up -d --build
+```
+
+Then open **https://localhost/** (the self-signed cert triggers a browser warning — expected). See [`optout-hub/deploy/README.md`](optout-hub/deploy/README.md) for TLS certificates, production notes, and using a different reverse proxy.
+
+## Run it (from source)
 
 Prerequisites: Node 20+, and either Docker or a local PostgreSQL 16.
 

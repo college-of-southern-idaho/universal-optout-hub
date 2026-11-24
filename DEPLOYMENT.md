@@ -213,6 +213,21 @@ your-hub.example.edu {
 
 ---
 
+## Containerized deployment (Docker + nginx)
+
+For a self-contained stack — **nginx (TLS termination) → app → PostgreSQL**, with migrations applied on start — use the Compose setup in [`optout-hub/deploy/`](optout-hub/deploy/):
+
+```bash
+cd optout-hub/deploy
+cp .env.example .env                              # APP_SECRET + POSTGRES_PASSWORD
+./gen-selfsigned-cert.sh your-host.example.edu    # or drop real certs in ./certs
+docker compose up -d --build
+```
+
+The app container runs as non-root with `TRUST_PROXY=1` and `FORCE_HTTPS=1`, so it enforces the full security posture itself (HSTS, CSP, security headers, `/metrics` blocked at the edge, fail-closed, encrypted-at-rest credentials) — nginx is the default TLS terminator but can be swapped for any proxy. Full instructions (Let's Encrypt, managed-database and file-based-secrets options, key rotation) are in [`optout-hub/deploy/README.md`](optout-hub/deploy/README.md).
+
+---
+
 ## Edge hardening (from the security assessment)
 
 A non-destructive external assessment found the app's **own** controls strong (auth
