@@ -1,0 +1,3 @@
+# Place your TLS certificate here as server.crt (full chain) + server.key (key).
+# For testing, run ../gen-selfsigned-cert.sh to generate them.
+# These files are git-ignored (see ../.gitignore).

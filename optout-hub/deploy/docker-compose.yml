@@ -1,0 +1,74 @@
+# Full containerized deployment: nginx (TLS termination) → app → PostgreSQL.
+#
+# Quick start (see README.md):
+#   cp .env.example .env            # set APP_SECRET and POSTGRES_PASSWORD
+#   ./gen-selfsigned-cert.sh your-host.example.edu   # or drop real certs in ./certs
+#   docker compose up -d --build
+#
+# Only nginx publishes ports (80/443). The app and database are reachable only on
+# the internal compose network — the app enforces its own security controls
+# (TRUST_PROXY, in-app HTTPS/HSTS, CSP/headers, fail-closed), so you can replace
+# nginx with any reverse proxy as long as it terminates TLS and forwards
+# X-Forwarded-Proto/For (see README.md → "Using a different proxy").
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-optout_hub}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hub} -d ${POSTGRES_DB:-optout_hub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Not published — only the app reaches it on the internal network.
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgres://${POSTGRES_USER:-hub}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-optout_hub}
+      # Security controls — the app enforces these itself, regardless of the proxy:
+      APP_SECRET: ${APP_SECRET:?set APP_SECRET in .env (generate: openssl rand -hex 32)}
+      APP_SECRET_OLD: ${APP_SECRET_OLD:-}          # only during a key rotation
+      TRUST_PROXY: "1"                              # trust the one proxy hop (nginx)
+      FORCE_HTTPS: "1"                              # redirect plaintext + send HSTS
+      METRICS_TOKEN: ${METRICS_TOKEN:-}            # also blocked at nginx; token-guards /metrics
+      WEBHOOK_PUBLIC_BASE: ${WEBHOOK_PUBLIC_BASE:-}
+      # Optional OIDC/SSO (leave blank to use local accounts only):
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-}
+    expose:
+      - "3000"
+    # Not published — only nginx reaches it on the internal network.
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/app.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - certbot-www:/var/www/certbot:ro
+
+volumes:
+  pgdata:
+  certbot-www:
