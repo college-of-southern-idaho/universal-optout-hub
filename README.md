@@ -2,14 +2,16 @@
   <img src=".github/assets/logo.png" alt="Universal Opt-Out Synchronization Hub" width="440">
 </p>
 
-# Universal Opt-Out Synchronization Hub
+<p align="center">
+  An open-source reconciliation hub that synchronizes consent state — opt-outs and opt-ins for phone numbers and email addresses — across every messaging platform an organization uses.
+</p>
 
-An open-source reconciliation hub that synchronizes consent state — opt-outs and opt-ins for phone numbers and email addresses — across all of an organization's messaging platforms.
-
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![CI](https://github.com/college-of-southern-idaho/universal-optout-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/college-of-southern-idaho/universal-optout-hub/actions/workflows/ci.yml)
-![Node](https://img.shields.io/badge/node-%E2%89%A520-5FA04E?logo=node.js&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-required-4169E1?logo=postgresql&logoColor=white)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0"></a>
+  <a href="https://github.com/college-of-southern-idaho/universal-optout-hub/actions/workflows/ci.yml"><img src="https://github.com/college-of-southern-idaho/universal-optout-hub/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A520-5FA04E?logo=node.js&logoColor=white" alt="Node">
+  <img src="https://img.shields.io/badge/PostgreSQL-required-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL">
+</p>
 
 > **Project status:** A functional implementation, actively developed. The consent engine, reconciliation loop, opt-in approval workflow, manual management UI, authentication/RBAC, and an admin **service-configuration** surface are implemented (Node.js + TypeScript + Express + PostgreSQL). A catalog of 35 SMS/email platform types can be registered and configured from the UI; eight — **SendGrid**, **Twilio**, **Constant Contact**, **Telesign**, **Amazon SNS**, **Amazon SES**, **Azure Communication Services**, and **Modern Campus Message (Signal Vine)** — talk to the real platform APIs today, and the rest run on a simulator until their clients are written. See [DESIGN.md](DESIGN.md) for the architecture and [QUICKSTART.md](QUICKSTART.md) to run it.
 
