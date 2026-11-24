@@ -1,3 +1,4 @@
+<img width="2178" height="722" alt="Universal Optout Hub Logo" src="https://github.com/user-attachments/assets/6df4b3cb-075e-4100-956d-b6391e6eada8" />
 # Universal Opt-Out Synchronization Hub
 
 An open-source reconciliation hub that synchronizes consent state — opt-outs and opt-ins for phone numbers and email addresses — across all of an organization's messaging platforms.
